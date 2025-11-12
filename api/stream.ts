@@ -27,7 +27,11 @@ function scoreImpact(text: string) {
   let s = 0;
   for (const k of BULLISH_TERMS) if (t.includes(k.toLowerCase())) s += 1;
   for (const k of BEARISH_TERMS) if (t.includes(k.toLowerCase())) s -= 1;
-  const label = s >= 2 ? 'bullish-strong' : s === 1 ? 'bullish' : s <= -2 ? 'bearish-strong' : s === -1 ? 'bearish' : 'neutral';
+  const label =
+    s >= 2 ? 'bullish-strong' :
+    s === 1 ? 'bullish' :
+    s <= -2 ? 'bearish-strong' :
+    s === -1 ? 'bearish' : 'neutral';
   return { score: s, label };
 }
 
@@ -40,13 +44,14 @@ function toSSE(data: any) {
   return `data: ${JSON.stringify(data)}\n\n`;
 }
 
+// 🔒 Proxy via AllOrigins para evitar bloqueios/CORS em edge/serverless
 async function fetchText(url: string) {
-  const res = await fetch(url, { headers: { 'User-Agent': 'btc-news-alert/1.0' } });
+  const proxied = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}&nocache=${Date.now()}`;
+  const res = await fetch(proxied);
   if (!res.ok) throw new Error(`Fetch failed ${res.status}`);
   return await res.text();
 }
 
-// ✅ CORRIGIDO: barras invertidas normais (\) nas expressões
 function parseRSS(xml: string) {
   const items: { title: string; link: string; pubDate?: string }[] = [];
   const itemRegex = /<item>([\s\S]*?)<\/item>/gi;
@@ -54,8 +59,7 @@ function parseRSS(xml: string) {
   while ((m = itemRegex.exec(xml))) {
     const block = m[1];
     const get = (tag: string) =>
-      (new RegExp(`<${tag}[^>]*>([\s\S]*?)<\/${tag}>`, 'i')
-        .exec(block)?.[1] || '')
+      (new RegExp(`<${tag}[^>]*>([\s\S]*?)<\/${tag}>`, 'i').exec(block)?.[1] || '')
         .replace(/<!\[CDATA\[(.*?)\]\]>/g, '$1')
         .trim();
     const title = get('title');
@@ -68,7 +72,7 @@ function parseRSS(xml: string) {
 
 const seen = new Map<string, number>();
 
-export default async function handler(req: Request) {
+export default async function handler(_req: Request) {
   const { readable, writable } = new TransformStream();
   const writer = writable.getWriter();
   const encoder = new TextEncoder();
@@ -83,6 +87,7 @@ export default async function handler(req: Request) {
     'Connection': 'keep-alive'
   });
 
+  // handshake
   push({ type: 'hello', at: Date.now() });
 
   async function cycle() {
