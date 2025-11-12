@@ -1,10 +1,16 @@
 export const config = { runtime: 'edge' };
 
 const RSS_SOURCES = [
-  'https://feeds.reuters.com/reuters/worldNews',
-  'https://feeds.reuters.com/reuters/businessNews',
-  'https://feeds.reuters.com/reuters/USbusinessNews',
-  'https://apnews.com/hub/ap-top-news?utm_source=rss'
+  // Trump (foco Reuters/Trump via Google News)
+  'https://news.google.com/rss/search?q=site:reuters.com+Donald+Trump&hl=en-US&gl=US&ceid=US:en',
+  // Macro (Fed/juros/inflação)
+  'https://news.google.com/rss/search?q=Federal+Reserve+OR+interest+rate+OR+inflation+OR+CPI&hl=en-US&gl=US&ceid=US:en',
+  // Macro ampla (CPI, jobs, GDP)
+  'https://news.google.com/rss/search?q=US+CPI+OR+jobs+report+OR+payrolls+OR+GDP+OR+Treasury+yield&hl=en-US&gl=US&ceid=US:en',
+  // AP Top News
+  'https://news.google.com/rss/search?q=site:apnews.com+Top+News&hl=en-US&gl=US&ceid=US:en',
+  // CNBC Top News
+  'https://www.cnbc.com/id/100003114/device/rss/rss.html'
 ];
 
 const TRUMP_TERMS = [
@@ -44,7 +50,7 @@ function toSSE(data: any) {
   return `data: ${JSON.stringify(data)}\n\n`;
 }
 
-// 🔒 Proxy via AllOrigins para evitar bloqueios/CORS em edge/serverless
+// Proxy AllOrigins
 async function fetchText(url: string) {
   const proxied = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}&nocache=${Date.now()}`;
   const res = await fetch(proxied);
@@ -87,7 +93,6 @@ export default async function handler(_req: Request) {
     'Connection': 'keep-alive'
   });
 
-  // handshake
   push({ type: 'hello', at: Date.now() });
 
   async function cycle() {
